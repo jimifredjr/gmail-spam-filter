@@ -1,25 +1,26 @@
 # Advanced Gmail Spam Filter
 
-A custom Google Apps Script and local Node.js testing environment designed to intercept sophisticated spam campaigns that bypass standard Gmail filters through header manipulation and routing exploits. 
+A Google Apps Script that scans recent Gmail threads for suspicious sender and routing patterns, with a local Node.js test suite.
 
-This project decouples the core regex evaluation logic from the Google Apps Script API, allowing you to unit test new spam rules locally without burning through Gmail's daily API quotas.
+The filter processes up to 15 matching threads per run. Flagged threads are moved to Spam and marked as read.
 
 ## 🚀 Features
 
-Detects and flags advanced email spoofing techniques, including:
-* **Nested Domain Exploits:** Catching nested `.com@` routing tricks (e.g., `user@gmail.com@spammer.net`).
-* **Double `@` Routing:** Identifying malformed delivery paths.
-* **Display Name Spoofing:** Detecting when the recipient's email is spoofed in the Display Name while the actual `<routing>` address points elsewhere.
-* **Bracketed Email Exploits:** Flagging unnatural square bracket wrapping used to break parser logic (e.g., `[user@gmail.com]`).
-* **Missing TLDs:** Catching malformed routing addresses missing a top-level domain (e.g., `<spammer@_random_nm>`).
-* **Regex Safety Checks:** Prevents false positives by strictly respecting commas in multi-recipient corporate/university emails.
+The current rules flag:
+* Invisible Unicode characters in the subject or sender header.
+* `%INC` or `%ZRK` markers in the sender header.
+* Nested `.com@` routing in To, Cc, or Bcc, and the account address followed by another `@` in To.
+* Bracketed account addresses in Cc or Bcc.
+* Malformed To headers without an `@`.
+* Routing addresses missing a top-level domain in To or Cc.
+* Cc addresses containing the account username prefix and a `.namprd` or `.prod.outlook.com` subdomain, unless the account address itself is also present.
+* Identical To and Cc headers containing only one `@` each.
 
 ## 🗂️ Project Structure
 
-* `Code.js` - The monolithic Apps Script file containing both the evaluation logic and the Gmail execution loops. This is what runs live on Google servers.
-* `filter.js` - The decoupled local Node.js module containing strictly the regex evaluation logic. 
-* `test.js` - The local Node.js unit testing suite utilizing mock headers.
-* `.claspignore` - Ensures Node testing files and `package.json` are not pushed to Google Apps Script.
+* `Code.js` - The Apps Script filter rules and Gmail execution function deployed to Google.
+* `test.js` - A Node.js test suite that runs `Code.js` with mocked Gmail threads.
+* `.claspignore` - Excludes local Node.js testing files and package metadata from Apps Script deployments.
 
 ## 📋 Prerequisites
 
@@ -66,19 +67,17 @@ When you save the trigger, Google will ask you to authorize the script. Click Ad
 Make sure the .claspignore file is present in your directory. This prevents clasp from trying to upload your Node testing files to Google's servers.
 
 ## 💻 Local Development & Testing
-When a new piece of spam bypasses the filter, add its raw headers as a new test case in `test.js`, refine the regex in `filter.js`, and run the suite locally.
+When a new piece of spam bypasses the filter, add a test case to `test.js` and update the corresponding rule in `Code.js`. The tests use a mocked Gmail API and do not access your Gmail account.
 
 ```bash
-# Run the local unit tests
-node test.js
+npm test
 ```
 
 ## ☁️ Deployment
 Push Code to Google Apps Script
-Once your local tests pass, push the updated Code.js file directly to Google Apps Script using Clasp.
+Once your local tests pass, push the updated Apps Script source to Google Apps Script using Clasp.
 
 ```Bash
 clasp push
 ```
 (After this, run your standard git commit and git push to save the version in GitHub).
-
